@@ -1,0 +1,359 @@
+                       = Gela ASIS User Manual =
+{{{
+              Gela ASIS Version 0.3.2 (01 Dec 2013, SVN 210)
+                           The Gela project
+}}}
+== Overview ==
+
+Gela ASIS is platform/compiler independent implementation of Ada Semantic
+Interface Specification (ASIS). ASIS is an open and published callable
+interface, which gives applications access to semantic and syntactic
+information about Ada compilation units.
+
+== History ==
+
+Work on Gela ASIS started in 2003. In 2006 Gela ASIS project joined TenDRA
+project. TenDRA is a compiler based on Architecture Neutral Distribution
+Format (ANDF). In 2008 Gela ASIS was extended to accept Ada 2005 and
+implement related ASIS issues. QtAda uses Gela ASIS on platforms where
+no native ASIS provided.
+
+Gela ASIS is distributed under BSD License.
+
+This document (Gela ASIS User Manual) tells how to install and use Gela ASIS.
+
+== What's new in 0.3.2 version ==
+New features since 0.3 version are:
+ * Bug fixes
+ * Support building gela-asis as relocatable library
+
+== Related information ==
+ * Gela ASIS home page:     http://gela.ada-ru.org
+ * Gela ASIS Trac site:     http://forge.ada-ru.org/gela
+ * The TenDRA project: 	    http://www.ten15.org/
+ * ASIS WG home:            http://www.acm.org/sigada/wg/asiswg/
+ * ASIS 99 Issues:          http://www.ada-auth.org/ais.html#ASIS99
+ * QtAda home page:         http://www.qtada.com/
+
+== Gela ASIS Summary ==
+
+This is quotation from Introduction to ASIS:
+
+  "The Ada Semantic Interface Specification (ASIS) is an interface between
+  an Ada environment (as defined by ISO/IEC 8652:1995) and any tool requiring
+  information from it. An Ada environment includes valuable semantic and
+  syntactic information. ASIS is an open and published callable interface,
+  which gives CASE tool and application developers access to this information.
+  ASIS has been designed to be independent of underlying Ada environment
+  implementations, thus supporting portability of software engineering tools
+  while relieving tool developers from needing to understand the complexities
+  of an Ada environment's proprietary internal representation.
+
+  Examples of tools that benefit from the ASIS interface include: automated
+  code monitors, browsers, call tree tools, code reformators, coding standards
+  compliance tools, correctness verifiers, debuggers, dependency tree analysis
+  tools, design tools, document generators, metrics tools, quality assessment
+  tools, reverse engineering tools, re-engineering tools, style checkers, test
+  tools, timing estimators, and translators."
+
+
+Gela ASIS could be used when compiler vendor doesn't provide native ASIS
+implementation or such implementation is expensive. Compiling a tool with
+Gela ASIS makes it really platform/compiler independent.
+
+Gela ASIS provide tool developer with preview of future ASIS for Ada 2005
+standard, because it implements many of Ada 2005 ASIS proposals. This allows
+writing Ada 2005 capable CASE tool before ASIS for Ada 2005 standard is ready.
+
+== Distribution ==
+
+Gela ASIS is distributed in source form. Distribution includes sources of
+Gela ASIS and tool to generate other needed sources along generated sources,
+an independent Ada environment specifications, documentations and Makefile
+to automate building process. It should compiled/installed before use. 
+See detailed installation instructions bellow.
+
+== Requirements ==
+
+Building process required about 62 Mb of free space. Final installation takes
+about 27 Mb.
+
+Follow software needed to build Gela ASIS from sources from scratch
+ * GNAT Ada compiler
+ * ayacc compiler tool (optional, included in distribution)
+ * xsltproc - XSL processor. 
+ * make, sed, echo, rm, cat, cp, install - commands
+
+Windows version of xsltproc is available at 
+http://www.zlatkovic.com/libxml.en.html. Download the packages
+for libxml, libxslt, zlib, and iconv. Place xsltproc.exe and all
+*.dll from these packages somewhere and add it to PATH. Cygwin
+has its own version of xsltproc.
+
+We successfully compile Gela ASIS on GNU Linux, FreeBSD, MS Windows (with 
+Cygwin or MinGW) on x86 architecture. Probably it will run on other OS/CPU
+too.
+
+After compilation and installation procedure user will have
+ * Gela ASIS sources installed into <prefix>/include/gela-asis/
+ * libgela-asis.a and ALI files  installed into <prefix>/lib/gela-asis/
+ * independent standard Ada environment specifications
+   installed into <prefix>/include/gela-asis/spec/
+
+First two required to build ASIS application. Environment specifications
+should be accessible to ASIS application when it runs. Use GELA_INCLUDE_PATH
+to point its location:
+
+{{{
+export GELA_INCLUDE_PATH=<prefix>/include/gela-asis/spec/
+}}}
+
+If you don't have required software or use Ada compiler other then GNAT
+you can just compile provided Ada sources.
+
+== Instalation ==
+
+Unpack Geal ASIS sources archive:
+{{{
+tar xjf gela-asis-0.3.2.tar.bz2
+}}}
+
+Compile Gela ASIS library (using provided generated sources):
+{{{
+  cd gela-asis-0.3.2/
+  make
+}}}
+
+Optionally, if you like to generate sources from scratch and compile, do:
+{{{
+make generate all
+}}}
+
+Install Gela ASIS:
+{{{
+make install PREFIX=<prefix>
+}}}
+
+Point environment variable GELA_INCLUDE_PATH to Ada standard library
+specifications:
+{{{
+  GELA_INCLUDE_PATH=<prefix>/include/gela-asis/spec
+  export GELA_INCLUDE_PATH
+}}}
+
+If your prefix isn't root directory of gnat installation
+add ''<prefix>''/lib/gnat to ADA_PROJECT_PATH:
+{{{
+  ADA_PROJECT_PATH=<prefix>/lib/gnat:$ADA_PROJECT_PATH
+  export ADA_PROJECT_PATH
+}}}
+
+Compile and run "Hello world" ASIS application:
+{{{
+  cd examples/hello_world/
+  gnatmake -P asis_hello_world.gpr
+  ./asis_hello_world example.adb
+}}}
+
+This application just prints list of compilation units included in
+ASIS.Context and path to their source files. Result looks like this:
+{{{
+example.adb => Example
+<prefix>/include/gela-ada-spec/ada-io_exceptions.ads => Ada.IO_Exceptions
+<prefix>/include/gela-ada-spec/ada.ads => Ada
+<prefix>/include/gela-ada-spec/ada-text_io.ads => Ada.Text_IO
+<prefix>/include/gela-ada-spec/standard.ads => Standard
+}}}
+
+=== Build as relocatable library ===
+
+To build and install dynamic library add LIBKIND=relocatable to make command:
+
+{{{
+make all install LIBKIND=relocatable PREFIX=<prefix>
+}}}
+
+
+                                 = Usage =
+
+== Project Files ==
+
+To build your own ASIS application with project files, just add to
+your project file next line:
+{{{
+with "gela_asis";
+}}}
+
+== Implementation Specific Parameters ==
+
+Parameters of three procedures are implementation defined:
+ * Asis.Implementation.Initialize, 
+ * Asis.Implementation.Finalize,
+ * Asis.Ada_Environments.Associate.
+
+Gela ASIS doesn't require any parameters for Asis.Implementation.Initialize
+and Asis.Implementation.Finalize. It will ignore any value of thise
+parameters.
+
+Parameter of Asis.Ada_Environments.Associate should have following form:
+
+ {{{ {option} <file_name> }}}
+
+Where <file_name> - file contains one or more Ada compilation units to
+populate ASIS Context and "option" one of:
+
+  -I<dir>  -  Add the directory dir to the list of directories to be searched 
+  for Ada units. Initial value of the list contains sinlge directory
+  pointed by GELA_INCLUDE_PATH environment variable.
+
+  -A:assertion_expression - turn on debug facilities. More about this is on
+  project site:    http://gela.ada-ru.org    /debug
+
+  -Eencoding_name - set encoding for sources. Default is UTF-8
+
+Gela ASIS populate ASIS Context by compilation units found in supplied
+<file_name> and all units semantically depend on them. It uses follow file
+naming rules:
+
+  File name is equal to unit name in lower case where symbol '.' replaced
+  by '-'. Unit specification has extension '.ads' and unit body - '.adb'.
+  Gela ASIS looks for this files in directory pointed by GELA_INCLUDE_PATH
+  environment variable and directories provided by -I options.
+
+Standard predefined units supplied with Gela ASIS should be available
+to any Gela ASIS application.
+
+
+== Ada 2005 Issues ==
+
+To support Ada 2005 Standard we implement follow ASIS 99 issues:
+ * SI99-0001-1.TXT - Add new predefined pragmas to Pragma_Kinds
+ * SI99-0003-1.TXT - Support overriding indicators
+ * SI99-0004-1.TXT - Changes to Asis for changes to access types
+ * SI99-0006-1.TXT - Add new An_Interface_Type_Definition to Type_Kinds.
+ * SI99-0009-1.TXT - Handle new aggregate features
+ * SI99-0010-1.TXT - Add Extended_Return to the list of Statement_Kinds
+ * SI99-0011-1.TXT - Add support for tagged incomplete types
+ * SI99-0012-1.TXT - Add support for null procedure declarations
+ * SI99-0013-1.TXT - Add support for exceptions with string expressions
+ * SI99-0014-1.TXT - Generalize A_Formal_Package_Declaration_With_Box
+ * SI99-0015-1.TXT - Correct Corresponding_Type_Operators
+ * SI99-0017-1.TXT - Trait_Kind is unclear for access definitions
+ * SI99-0018-1.TXT - Add new Attributes to Attribute_Kinds
+ * SI99-0022-1.TXT - Add boolean queries to ease use of trait_kinds
+ * SI99-0032-1.TXT - Corrections for SI99-0004-1 and SI99-0006-1
+
+Even Asis for Ada 2005 described in the ASIS 99 Issues, but it still draft and
+has errors. We make some corrections to it to be able to implement Ada 2005.
+List of these corrections available at
+    http://gela.ada-ru.org    /Asis_2005_Ext
+
+
+== Performance Issues ==
+
+Gela ASIS processes Ada compilation units in Asis.Ada_Environments.Open
+procedure. During call to this procedure ASIS reads all needed Ada files,
+makes lexical and syntax analysis, builds ADTs in memory, resolves names
+and etc. It takes time for large Ada texts. After context is open, all other
+queries works with in-memory structures and are relative fast.
+
+
+== Target Dependency Issues ==
+
+Due to independent nature of Gela ASIS it has restrictions to input
+Ada texts. In some cases Name Resolution Rules solution depend on
+values of static expression. If values of this expression target
+depended (eg. Integer'Size) Gela ASIS can't calculate it and so,
+can't resolve names. Here are two examples of such code:
+
+Example 1:
+{{{
+declare
+   type Int_1 is range 1 .. 10;
+   type Int_2 is range 1 .. 20;
+   procedure F (X : Int_1);
+   procedure F (X : Int_2);
+
+   Arr : array (Int_1, Int_2) of Boolean;
+begin
+   for K in Arr'Range (Integer'Size / 16) loop
+      F (K);
+   end loop;
+end;
+}}}
+Here type of K is unknown due to dependency on target platform.
+
+Example 2:
+{{{
+declare
+   type Rec (Value : Integer) is record
+      case Value is
+         when 1 =>
+            X : Int_1;
+         when others =>
+            Y : Int_2;
+      end case;
+   end record;
+
+   Var : Rec := (Integer'Size / 16, 1);
+}}}
+Here discriminant value is unknown due to dependency on target platform,
+so type of second component in aggregate is unknown for Gela ASIS.
+
+We presume such usage of target depended static expression is very rare.
+
+
+== Processing standard Ada environment specifications ==
+
+Standard Ada Library certainly containt target depended elements.
+Such elements makred as "implementation-defined" in ARM.
+When you process such elements through Gela ASIS you will
+encounter Asis.Element marked as Is_Part_Of_Implicit.
+
+Example from package Stnadard:
+{{{
+   type Integer is range implementation-defined .. implementation-defined;
+}}}
+Here Lower_Bound/Upper_Bound elements will be marked as Is_Part_Of_Implicit.
+
+Implementation defined private types completed with pragma Import:
+
+{{{
+package Ada.Calendar is
+   type Time is private;
+   ...
+private
+   pragma Import (Ada, Time);
+}}}
+
+== Extensions ==
+
+Package Asis.Extensions containts extension to ASIS Standard:
+
+ * function Is_Static_Expression                             [[BR]]
+   takes Asis.Expression element as parameter and return True if
+   this expression is static as defined in RM 4.9.
+
+ * function Unique_Name                                      [[BR]]
+   takes Asis.Defining_Name element as parameter and returns unique text
+   for each defining name. It could be used for scrambling overloaded names.
+
+
+== Unimplemented features and known bugs ==
+
+This is early release of Gela ASIS and it has rather long list of
+unimplemented features:
+ * it can process only correct Ada program. Processing of incorrect Ada
+   program has undefined behavior.
+ * calculation of string static expressions is unimlemented.
+ * function Discriminant_Associations (Normalized => True) is not implemented.
+ * function Record_Component_Associations (Normalized => True) is not
+   implemented.
+ * function Is_Dispatching_Call is not implemented.
+ * formal_packages don't work correctly
+
+
+== Problem reporting ==
+
+If you have a problem fill a bug report at http://forge.ada-ru.org/gela
+

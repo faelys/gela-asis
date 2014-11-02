@@ -1,0 +1,270 @@
+------------------------------------------------------------------------------
+--                           G E L A   A S I S                              --
+--       ASIS implementation for Gela project, a portable Ada compiler      --
+--                          http://gela.ada-ru.org                          --
+--                     - - - - - - - - - - - - - - -                        --
+--            Read copyright and license at the end of this file            --
+------------------------------------------------------------------------------
+--  $Revision: 209 $ $Date: 2013-11-30 21:03:24 +0200 (Сб., 30 нояб. 2013) $
+--  Purpose:
+--  This is part of generated parser.y file
+
+pragma_r :
+    error semicolon
+{
+   declare
+      New_Node : constant Pragma_Ptr := New_Pragma_Node (The_Context);
+   begin
+      $$ := YYSTYPE (New_Node);
+      Set_Start_Position
+        (New_Node.all, (Get_Current_Line, Get_Current_Column - 1));
+      Set_Pragma_Name_Image (New_Node.all, "Syntax_Error");
+      Set_Pragma_Kind (New_Node.all, Asis.An_Implementation_Defined_Pragma);
+      Set_End_Position
+        (New_Node.all, (Get_Current_Line, Get_Current_Column - 1));
+   end;
+}
+;
+
+mode :
+     in     { Modes.$1 := An_In_Mode; }
+   | in out { Modes.$1 := An_In_Out_Mode; }
+   | out    { Modes.$1 := An_Out_Mode; }
+;
+
+general_access_modifier :
+     all       { Last_Access_Kind := An_Access_To_Variable; }
+   | constant  { Last_Access_Kind := An_Access_To_Constant; }
+;
+
+overriding_indicator :
+     not overriding { Last_Overriding_Kind := An_Indicator_of_Not_Overriding; }
+   | overriding     { Last_Overriding_Kind := An_Indicator_of_Overriding; }
+;
+
+%%
+with Gela;                     use Gela;
+with Gela.Decoders;
+with Gela.Encodings;
+with Gela.Source_Buffers;
+with Asis.Gela.Lines;
+
+##
+   procedure Run
+     (The_Context : in     Asis.Context;
+      Input       : in     Source_Buffers.Source_Buffer'Class;
+      Encoding    : in     Encodings.Encoding;
+      Decoder     : in     Decoders.Decoder'Class;
+      Line_List   : in out Lines.Vector;
+      Result      :    out Asis.Element);
+##
+
+
+with Asis.Gela.Scanners;
+with Asis.Gela.Scanner_Tables;
+with Gela.Character_Class_Buffers;
+with Gela.Classificators;
+with Asis.Gela.Classificators_Create;
+
+with Ada.Text_IO;
+with Ada.Characters.Handling;
+
+with Asis.Gela.Elements;               use Asis.Gela.Elements;
+with Asis.Gela.Elements.Assoc;         use Asis.Gela.Elements.Assoc;
+with Asis.Gela.Elements.Clause;        use Asis.Gela.Elements.Clause;
+with Asis.Gela.Elements.Clause.Rep;    use Asis.Gela.Elements.Clause.Rep;
+with Asis.Gela.Elements.Decl;          use Asis.Gela.Elements.Decl;
+with Asis.Gela.Elements.Defs;          use Asis.Gela.Elements.Defs;
+with Asis.Gela.Elements.Defs.Accs;     use Asis.Gela.Elements.Defs.Accs;
+with Asis.Gela.Elements.Defs.Const;    use Asis.Gela.Elements.Defs.Const;
+with Asis.Gela.Elements.Defs.Formal;   use Asis.Gela.Elements.Defs.Formal;
+with Asis.Gela.Elements.Defs.Types;    use Asis.Gela.Elements.Defs.Types;
+with Asis.Gela.Elements.Defs.Rng;      use Asis.Gela.Elements.Defs.Rng;
+with Asis.Gela.Elements.Defs.Sub;      use Asis.Gela.Elements.Defs.Sub;
+with Asis.Gela.Elements.Expr;          use Asis.Gela.Elements.Expr;
+with Asis.Gela.Elements.Def_Names;     use Asis.Gela.Elements.Def_Names;
+with Asis.Gela.Elements.Pathes;        use Asis.Gela.Elements.Pathes;
+with Asis.Gela.Elements.Stmt;          use Asis.Gela.Elements.Stmt;
+with Asis.Gela.Elements.Helpers;       use Asis.Gela.Elements.Helpers;
+with Asis.Gela.Units;                  use Asis.Gela.Units;
+with Asis.Gela.Base_Lists;             use Asis.Gela.Base_Lists;
+with Asis.Gela.Lists;                  use Asis.Gela.Lists;
+with Asis.Gela.Library;
+
+with Asis.Gela.Parser_Utils;           use Asis.Gela.Parser_Utils;
+
+##
+
+   package text_io renames Ada.Text_IO;
+
+   procedure Run
+     (The_Context : in     Asis.Context;
+      Input       : in     Source_Buffers.Source_Buffer'Class;
+      Encoding    : in     Encodings.Encoding;
+      Decoder     : in     Decoders.Decoder'Class;
+      Line_List   : in out Lines.Vector;
+      Result      :    out Asis.Element)
+   is
+
+      Chooser : aliased Classificators.Classificator'Class :=
+        Classificators_Create (Encoding, Decoder);
+      Scanner : Scanners.Scanner (Chooser'Access);
+
+      use Ada.Characters.Handling;
+
+      Last_Compilation   : Asis.Element;
+      Get_Current_Line   : Positive := 1;
+      Get_Current_Column : Positive := 1;
+      Line               : Lines.Line;
+      Has_Comment        : Boolean := False;
+      Comment            : Source_Buffers.Cursor;
+      Token_Stack        : array (1 .. 300) of aliased Token_Node;
+      Last_Access_Kind   : Asis.Access_Type_Kinds;
+      Last_Overriding_Kind : Asis.Overriding_Indicator_Kinds;
+      Last_Token         : Tokens.Token := Tokens.Token'First;
+
+      package Modes is
+         package yy is
+            value_stack  : array (1 .. 300) of Mode_Kinds;
+         end yy;
+      end Modes;
+
+      function Get_Token_Value return Wide_String is
+         From    : Source_Buffers.Cursor;
+         To      : Source_Buffers.Cursor;
+         Line    : Wide_String (1 .. 2048);
+         Last    : Natural;
+      begin
+         Scanners.Token_Span (Scanner, From, To);
+         Decoders.Decode (Decoder, From, To, Line, Last);
+         return Line (1 .. Last);
+      end Get_Token_Value;
+
+      function Raw_Value return Gela_String is
+         From    : Source_Buffers.Cursor;
+         To      : Source_Buffers.Cursor;
+      begin
+         Scanners.Token_Span (Scanner, From, To);
+         return (From, To);
+      end Raw_Value;
+
+      function To_String (Raw : Gela_String) return Wide_String is
+         Line    : Wide_String (1 .. 2048);
+         Last    : Natural;
+      begin
+         Decoders.Decode (Decoder, Raw.From, Raw.To, Line, Last);
+         return Line (1 .. Last);
+      end To_String;
+
+      function YYLex return Tokens.Token is
+         use type Source_Buffers.Cursor;
+         Token : Tokens.Token;
+         From  : Source_Buffers.Cursor;
+         To    : Source_Buffers.Cursor;
+      begin
+         Scanners.Next_Token (Scanner, Token);
+--text_io.put_Line (Token'Img & To_String (Get_Token_Value));
+         Scanners.Token_Span (Scanner, From, To);
+         Get_Current_Column :=
+           Get_Current_Column + Scanners.Token_Length (Scanner);
+
+         while Token = New_Line_Token or
+           Token = Separator_Token or
+           Token = Comment_Token
+         loop
+            if Token = New_Line_Token then
+               if Has_Comment then
+                  Has_Comment := False;
+                  Line.Comment := Comment;
+               else
+                  Line.Comment := From;
+               end if;
+
+               Line.To := From;
+               Lines.Vectors.Add (Line_List, Line);
+
+               Line.From := To;
+               Get_Current_Line := Get_Current_Line + 1;
+               Get_Current_Column := 1;
+            elsif Token = Comment_Token then
+               Has_Comment := True;
+               Comment := From;
+            end if;
+
+            Scanners.Next_Token (Scanner, Token);
+--text_io.put_Line (Token'Img & To_String (Get_Token_Value));
+            Scanners.Token_Span (Scanner, From, To);
+            Get_Current_Column :=
+              Get_Current_Column + Scanners.Token_Length (Scanner);
+         end loop;
+
+         if Token = Identifier_Token then
+            Scanners.Enter (Scanner, Scanner_Tables.Allow_Keyword);
+         elsif Token = Apostrophe_Token then
+            Scanners.Enter (Scanner, Scanner_Tables.Default);
+         elsif Token = Interface_Token and Last_Token = Pragma_Token then
+            Token := Identifier_Token;
+         else
+            Scanners.Enter (Scanner, Scanner_Tables.Allow_Char);
+         end if;
+
+         Last_Token := Token;
+         return Token;
+      end YYLex;
+
+      pragma Inline (YYLex);
+
+      procedure YYError (Text : String) is
+         Where : constant Text_Position :=
+           (Get_Current_Line, Get_Current_Column - 1);
+      begin
+         Report_Error
+           (The_Context.all, Asis.Nil_Compilation_Unit,
+            Where, "Syntax Error", Error);
+      end YYError;
+
+##
+
+   begin
+      Scanners.Initialize (Scanner, Source_Buffers.Buffer_Start (Input));
+      Line.From := Source_Buffers.Buffer_Start (Input);
+      YYParse;
+      declare
+         From    : Source_Buffers.Cursor;
+         To      : Source_Buffers.Cursor;
+      begin
+         Scanners.Token_Span (Scanner, From, To);
+         Line.To := From;
+         Lines.Vectors.Add (Line_List, Line);
+      end;
+      Result := Last_Compilation;
+   end Run;
+
+------------------------------------------------------------------------------
+--  Copyright (c) 2006-2013, Maxim Reznik
+--  All rights reserved.
+--
+--  Redistribution and use in source and binary forms, with or without
+--  modification, are permitted provided that the following conditions are met:
+--
+--     * Redistributions of source code must retain the above copyright notice,
+--       this list of conditions and the following disclaimer.
+--     * Redistributions in binary form must reproduce the above copyright
+--       notice, this list of conditions and the following disclaimer in the
+--       documentation and/or other materials provided with the distribution.
+--     * Neither the name of the Maxim Reznik, IE nor the names of its
+--       contributors may be used to endorse or promote products derived from
+--       this software without specific prior written permission.
+--
+--  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+--  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+--  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+--  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+--  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+--  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+--  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+--  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+--  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+--  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+--  POSSIBILITY OF SUCH DAMAGE.
+------------------------------------------------------------------------------

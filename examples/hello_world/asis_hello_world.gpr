@@ -1,0 +1,6 @@
+with "gela_asis";
+
+project ASIS_Hello_World is
+   for Languages use ("Ada");
+   for Main use ("asis_hello_world.adb");
+end ASIS_Hello_World;
